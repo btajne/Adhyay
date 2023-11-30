@@ -9,7 +9,7 @@ from machine import Pin
 led = Pin('LED', Pin.OUT)
 ledState = 'LED State Unknown'
 
-# button = Pin(16, Pin.IN, Pin.PULL_UP)
+
 
 ssid = 'Redmi Note 7 Pro'
 password = '87660099'
@@ -86,13 +86,7 @@ while True:
             led.value(0)
         
         ledState = "LED is OFF" if led.value() == 0 else "LED is ON" # a compact if-else statement
-#         
-#         if button.value() == 1: # button not pressed
-#             print("button NOT pressed")
-#             buttonState = "Button is NOT pressed"
-#         else:
-#             print("button pressed")
-#             buttonState = "Button is pressed"
+
         
         # Create and send response
         stateis = ledState 
