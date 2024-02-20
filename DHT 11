@@ -1,0 +1,25 @@
+import time
+import board
+import adafruit_dht
+
+# Connect the DHT11 sensor to the Raspberry Pi Pico
+dht_pin = board.GP4  # Adjust the pin based on your wiring
+
+# Initialize the DHT11 sensor
+dht_sensor = adafruit_dht.DHT11(dht_pin)
+
+while True:
+    try:
+        # Read temperature and humidity from the DHT11 sensor
+        temperature_celsius = dht_sensor.temperature
+        humidity_percent = dht_sensor.humidity
+
+        # Print the sensor readings
+        print("Temperature: {:.1f} °C".format(temperature_celsius))
+        print("Humidity: {:.1f} %".format(humidity_percent))
+
+    except RuntimeError as e:
+        # Handle DHT11 sensor errors (e.g., communication timeout)
+        print("Error reading from DHT sensor: ", e)
+
+    time.sleep(1)  # Wait for 2 seconds before the next reading
