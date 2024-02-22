@@ -1,0 +1,171 @@
+import board
+import busio
+import displayio
+import time
+import adafruit_displayio_ssd1306
+import adafruit_imageload
+import adafruit_hcsr04
+import digitalio
+
+# Function for Monochrome displays to invert the background color
+# def invert_colors():
+#     temp = icon_pal[0]
+#     icon_pal[0] = icon_pal[1]
+#     icon_pal[1] = temp
+
+displayio.release_displays()
+
+# I2C pin mapping - SDA->GP0 & SCL->GP1
+sda, scl = board.GP26, board.GP27
+i2c = busio.I2C(scl, sda)
+
+# Initialize I2C display with device address 0x3C
+# Display Width x Height for sh1106 = 128x64 Pixels
+display_bus = displayio.I2CDisplay(i2c, device_address=0x3c)
+display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=64)
+
+# Converted bitmap file - SPRITE Sheet image
+IMAGE_FILE = "icon_19_frames.bmp"
+SPRITE_SIZE = (128, 64)
+FRAMES = 19
+
+group = displayio.Group()
+
+# Load the spritesheet
+icon_bit, icon_pal = adafruit_imageload.load(IMAGE_FILE,
+                                              bitmap=displayio.Bitmap,
+                                              palette=displayio.Palette)
+
+# Cordinates x=32, y=0 To keep icon animation at the center of Display
+icon_grid = displayio.TileGrid(icon_bit, pixel_shader=icon_pal,
+                                width=1, height=1,
+                                tile_height=SPRITE_SIZE[1], tile_width=SPRITE_SIZE[0],
+                                default_tile=0,
+                                x=0, y=0)
+
+# Append the icon grid to Display(Image) group
+group.append(icon_grid)
+
+# Display SPRITE Sheet image
+display.show(group)
+
+# Timer Variables
+animation_start_time = time.monotonic()
+animation_duration = 5  # Animation duration in seconds
+
+while (time.monotonic() - animation_start_time) < animation_duration:
+    # Update the animation frames
+    for pointer in range(FRAMES):
+        icon_grid[0] = pointer
+        time.sleep(0.1)  # Adjust the delay as needed for smoother animation
+
+# After the animation, make the display static
+# Here, the last frame of the animation will be displayed
+icon_grid[0] = FRAMES - 1
+
+# Delay to display the last frame for a while
+time.sleep(2)
+
+# To make it completely static, you can uncomment and implement invert_colors() function
+# invert_colors()
+# Middle ultrasonic sensor pins
+TRIGGER_PIN_M = board.GP9
+ECHO_PIN_M = board.GP8
+
+# Motor pins
+MOTOR1_PIN1 = board.GP11
+MOTOR1_PIN2 = board.GP10
+MOTOR2_PIN1 = board.GP14
+MOTOR2_PIN2 = board.GP15
+
+# Initialize middle ultrasonic sensor
+sonar_m = adafruit_hcsr04.HCSR04(trigger_pin=TRIGGER_PIN_M, echo_pin=ECHO_PIN_M)
+
+# Initialize motor control pins
+motor1_pin1 = digitalio.DigitalInOut(MOTOR1_PIN1)
+motor1_pin2 = digitalio.DigitalInOut(MOTOR1_PIN2)
+motor2_pin1 = digitalio.DigitalInOut(MOTOR2_PIN1)
+motor2_pin2 = digitalio.DigitalInOut(MOTOR2_PIN2)
+
+motor1_pin1.direction = digitalio.Direction.OUTPUT
+motor1_pin2.direction = digitalio.Direction.OUTPUT
+motor2_pin1.direction = digitalio.Direction.OUTPUT
+motor2_pin2.direction = digitalio.Direction.OUTPUT
+
+# Function to get distance from middle ultrasonic sensor
+def get_dis_mid():
+    distance_m = sonar_m.distance
+    return distance_m
+
+# Function to move both motors forward
+def move_forward():
+    motor1_pin1.value = True
+    motor1_pin2.value = False
+    motor2_pin1.value = True
+    motor2_pin2.value = False
+
+# Function to move both motors backward
+def move_backward():
+    motor1_pin1.value = False
+    motor1_pin2.value = True
+    motor2_pin1.value = False
+    motor2_pin2.value = True
+
+# Function to move left
+def move_left():
+    motor1_pin1.value = False
+    motor1_pin2.value = True
+    motor2_pin1.value = True
+    motor2_pin2.value = False
+
+# Function to move right
+def move_right():
+    motor1_pin1.value = True
+    motor1_pin2.value = False
+    motor2_pin1.value = False
+    motor2_pin2.value = True
+
+# Function to stop both motors
+def stop_motors():
+    motor1_pin1.value = False
+    motor1_pin2.value = False
+    motor2_pin1.value = False
+    motor2_pin2.value = False
+
+# Main loop
+while True:
+    try:
+        # Read distance from the middle ultrasonic sensor
+        distance_m = get_dis_mid()
+        
+        # Print the distance
+        print(f"Middle: {distance_m} cm")
+        
+        # Obstacle detection and avoidance logic
+        if distance_m < 10:  # If an obstacle is detected
+            print("Obstacle detected in the middle!")
+            
+            # Move backward for a short duration
+            move_backward()
+            time.sleep(1)
+            
+            # Randomly choose left or right to turn
+            if distance_m < 5:  # If the obstacle is very close, turn right
+                move_right()
+            else:
+                move_left()
+ # Allow the robot to turn for a short duration
+            time.sleep(0.5)
+        else:  # If no obstacle, move forward
+            move_forward()
+        
+        # Delay before the next reading
+        time.sleep(0.1)
+    
+    except KeyboardInterrupt:
+        # Stop the motors and exit the loop if a keyboard interrupt is detected
+        stop_motors()
+        break
+    except Exception as e:
+        # Print any exceptions for debugging
+        print("Error:", e)
