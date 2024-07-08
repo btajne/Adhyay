@@ -1,13 +1,11 @@
-import time
-import board
-import digitalio
+#code is using micropython
+from machine import Pin
+from time import sleep
 
-
-led = digitalio.DigitalInOut(board.GP15)
-led.direction = digitalio.Direction.OUTPUT
+led = Pin(15, Pin.OUT)
 
 while True:
-    led.value = True  
-    time.sleep(1)     
-    led.value = False 
-    time.sleep(1)     
+    led.value(1)  
+    sleep(1)      
+    led.value(0)  
+    sleep(1)      
