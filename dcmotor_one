@@ -1,0 +1,28 @@
+import machine
+import time
+
+IN1 = machine.Pin(0, machine.Pin.OUT)  
+IN2 = machine.Pin(1, machine.Pin.OUT)  
+
+def forward():
+    IN1.on()
+    IN2.off()
+
+def backward():
+    IN1.off()
+    IN2.on()
+
+def stop():
+    IN1.off()
+    IN2.off()
+
+while True:
+    forward()
+    time.sleep(2)
+    stop()
+    time.sleep(2)
+    backward()
+    time.sleep(2)
+    stop()
+    time.sleep(2)
+
