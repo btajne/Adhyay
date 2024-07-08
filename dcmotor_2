@@ -1,0 +1,46 @@
+import machine
+import utime
+
+IN1_Motor1 = machine.Pin(2, machine.Pin.OUT) 
+IN2_Motor1 = machine.Pin(3, machine.Pin.OUT) 
+IN1_Motor2 = machine.Pin(0, machine.Pin.OUT) 
+IN2_Motor2 = machine.Pin(1, machine.Pin.OUT)  
+
+def motor1_forward():
+    IN1_Motor1.on()
+    IN2_Motor1.off()
+
+def motor1_backward():
+    IN1_Motor1.off()
+    IN2_Motor1.on()
+
+def motor1_stop():
+    IN1_Motor1.off()
+    IN2_Motor1.off()
+
+def motor2_forward():
+    IN1_Motor2.on()
+    IN2_Motor2.off()
+
+def motor2_backward():
+    IN1_Motor2.off()
+    IN2_Motor2.on()
+
+def motor2_stop():
+    IN1_Motor2.off()
+    IN2_Motor2.off()
+
+while True:
+    motor1_forward()
+    motor2_forward()
+    utime.sleep(3)
+    motor1_stop()
+    motor2_stop()
+    utime.sleep(2)
+    motor1_backward()
+    motor2_backward()
+    utime.sleep(3)
+    motor1_stop()
+    motor2_stop()
+    utime.sleep(2)
+
