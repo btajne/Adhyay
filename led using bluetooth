@@ -1,0 +1,23 @@
+from machine import Pin, UART
+
+uart0 = UART(0, 9600)
+led = Pin(15, Pin.OUT)
+led.value(0)
+print("hello")
+uart0.write("Welcome to the void loop robotech\r\n")
+
+while True:
+    if uart0.any() > 0:
+        data = uart0.readline()  # Read the entire line
+        data = data.decode('utf-8').strip()  # Decode as UTF-8 and remove leading/trailing whitespace
+        print(data)
+
+        if data == "a":
+            led.value(1)
+            uart0.write("LED On\n")
+        elif data == "b":
+            led.value(0)
+            uart0.write("LED Off\n")
+        else:
+            uart0.write("Invalid command\r\n")
+
