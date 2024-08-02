@@ -1,0 +1,77 @@
+import umail
+import network
+import time
+import machine
+
+# Your network credentials
+ssid = 'Redmi Note 7 Pro'
+password = '87660099'
+
+# Email details
+sender_email = 'btajne1985@gmail.com'
+sender_name = 'Raspberry Pi Pico'
+sender_app_password = 'oaep ytjy yhbl yfba'
+recipient_email = 'anoynmous105@gmail.com'
+email_subject = 'Hello from RPi Pico W'
+
+# Init Wi-Fi Interface
+def init_wifi(ssid, password):
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    # Connect to your network
+    wlan.connect(ssid, password)
+    # Wait for Wi-Fi connection
+    connection_timeout = 10
+    while connection_timeout > 0:
+        print(wlan.status())
+        if wlan.status() >= 3:
+            break
+        connection_timeout -= 1
+        print('Waiting for Wi-Fi connection...')
+        time.sleep(1)
+    # Check if connection is successful
+    if wlan.status() != 3:
+        print('Failed to connect to Wi-Fi')
+        return False
+    else:
+        print('Connection successful!')
+        network_info = wlan.ifconfig()
+        print('IP address:', network_info[0])
+        return True
+
+# Function to read temperature from the onboard sensor
+def read_onboard_temperature():
+    sensor_temp = machine.ADC(4)
+    conversion_factor = 3.3 / (65535)
+    reading = sensor_temp.read_u16() * conversion_factor
+    # The temperature sensor returns a voltage proportional to the temperature
+    temperature_celsius = 27 - (reading - 0.706) / 0.001721
+    return temperature_celsius
+
+# Connect to your network
+if init_wifi(ssid, password):
+    # Read the onboard temperature
+    temperature = read_onboard_temperature()
+    print(f"Debug: Temperature read is {temperature:.2f}°C")  # Debug print
+
+    temperature_message = f"Current onboard temperature: {temperature:.2f}°C"
+    print(f"Debug: Temperature message to be sent: {temperature_message}")  # Debug print
+
+    # Send the email
+    smtp = umail.SMTP('smtp.gmail.com', 465, ssl=True) # Gmail's SSL port
+
+    try:
+        smtp.login(sender_email, sender_app_password)
+        smtp.to(recipient_email)
+        smtp.write("From:" + sender_name + "<" + sender_email + ">\n")
+        smtp.write("Subject:" + email_subject + "\n\n")  # Extra newline for email format
+        smtp.write(temperature_message)
+        smtp.send()
+        print("Email Sent Successfully")
+
+    except Exception as e:
+        print("Failed to send email:", e)
+    finally:
+        smtp.quit()
+else:
+    print("Failed to connect to Wi-Fi")
