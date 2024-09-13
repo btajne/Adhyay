@@ -1,0 +1,60 @@
+import machine
+import sdcard
+import uos
+import dht
+import utime
+
+# DHT11 data pin
+dht_sensor = dht.DHT11(machine.Pin(15))
+
+# Assign chip select (CS) pin (and start it high)
+cs = machine.Pin(1, machine.Pin.OUT)
+
+# Initialize SPI peripheral (start with 1 MHz)
+spi = machine.SPI(0,
+                  baudrate=1000000,
+                  polarity=0,
+                  phase=0,
+                  bits=8,
+                  firstbit=machine.SPI.MSB,
+                  sck=machine.Pin(2),
+                  mosi=machine.Pin(3),
+                  miso=machine.Pin(4))
+
+# Initialize SD card
+sd = sdcard.SDCard(spi, cs)
+
+# Mount filesystem
+vfs = uos.VfsFat(sd)
+uos.mount(vfs, "/sd")
+
+# Create CSV file with header if not exists
+with open("/sd/sensor_log.csv", "a") as file:
+    file.write("Timestamp,Temperature,Humidity\r\n")
+
+# Run this in an infinite loop to continuously log sensor data
+while True:
+    try:
+        # Measure the sensor data
+        dht_sensor.measure()
+        temp = dht_sensor.temperature()  # Use parentheses to call the method
+        humidity = dht_sensor.humidity()  # Use parentheses to call the method
+        timestamp = utime.localtime()  # Get the current time
+
+        # Format timestamp as YYYY-MM-DD HH:MM:SS
+        timestamp_str = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+            timestamp[0], timestamp[1], timestamp[2], timestamp[3], timestamp[4], timestamp[5])
+
+        # Write the sensor readings in CSV format
+        with open("/sd/sensor_log.csv", "a") as file:
+            file.write("{},{},{}\r\n".format(timestamp_str, temp, humidity))
+
+        # Print the current readings (optional)
+        print("Temperature: {}C, Humidity: {}%, Time: {}".format(temp, humidity, timestamp_str))
+
+    except Exception as e:
+        print('Failed to read sensor.', e)
+
+    # Sleep for 1 minute before next reading
+    utime.sleep(1)
+
