@@ -7,12 +7,6 @@ import adafruit_imageload
 import adafruit_hcsr04
 import digitalio
 
-# Function for Monochrome displays to invert the background color
-# def invert_colors():
-#     temp = icon_pal[0]
-#     icon_pal[0] = icon_pal[1]
-#     icon_pal[1] = temp
-
 displayio.release_displays()
 
 # I2C pin mapping - SDA->GP0 & SCL->GP1
@@ -36,7 +30,7 @@ icon_bit, icon_pal = adafruit_imageload.load(IMAGE_FILE,
                                               bitmap=displayio.Bitmap,
                                               palette=displayio.Palette)
 
-# Cordinates x=32, y=0 To keep icon animation at the center of Display
+# Coordinates x=32, y=0 To keep icon animation at the center of Display
 icon_grid = displayio.TileGrid(icon_bit, pixel_shader=icon_pal,
                                 width=1, height=1,
                                 tile_height=SPRITE_SIZE[1], tile_width=SPRITE_SIZE[0],
@@ -47,32 +41,12 @@ icon_grid = displayio.TileGrid(icon_bit, pixel_shader=icon_pal,
 group.append(icon_grid)
 
 # Display SPRITE Sheet image
-display.show(group)
+display.root_group = group
 
-# Timer Variables
-animation_start_time = time.monotonic()
-animation_duration = 5  # Animation duration in seconds
-
-while (time.monotonic() - animation_start_time) < animation_duration:
-    # Update the animation frames
-    for pointer in range(FRAMES):
-        icon_grid[0] = pointer
-        time.sleep(0.1)  # Adjust the delay as needed for smoother animation
-
-# After the animation, make the display static
-# Here, the last frame of the animation will be displayed
-icon_grid[0] = FRAMES - 1
-
-# Delay to display the last frame for a while
-time.sleep(2)
-
-# To make it completely static, you can uncomment and implement invert_colors() function
-# invert_colors()
-# Middle ultrasonic sensor pins
+# Motor and sensor pin configuration
 TRIGGER_PIN_M = board.GP9
 ECHO_PIN_M = board.GP8
 
-# Motor pins
 MOTOR1_PIN1 = board.GP11
 MOTOR1_PIN2 = board.GP10
 MOTOR2_PIN1 = board.GP14
@@ -132,40 +106,41 @@ def stop_motors():
     motor2_pin1.value = False
     motor2_pin2.value = False
 
-# Main loop
+# Animation and motor control loop
 while True:
-    try:
-        # Read distance from the middle ultrasonic sensor
-        distance_m = get_dis_mid()
-        
-        # Print the distance
-        print(f"Middle: {distance_m} cm")
-        
-        # Obstacle detection and avoidance logic
-        if distance_m < 10:  # If an obstacle is detected
-            print("Obstacle detected in the middle!")
+    # Animation loop for the display
+    for pointer in range(FRAMES):
+        icon_grid[0] = pointer
+        time.sleep(0.05)  # Faster animation (Reduced delay for smoother effect)
+
+        # Read distance from the middle ultrasonic sensor during animation
+        try:
+            distance_m = get_dis_mid()
+
+            # Obstacle detection and avoidance logic
+            if distance_m < 10:  # If an obstacle is detected
+                print(f"Obstacle detected: {distance_m} cm")
+                
+                # Move backward for a short duration
+                move_backward()
+                time.sleep(0.5)
+                
+                # Randomly choose left or right to turn
+                if distance_m < 5:  # If the obstacle is very close, turn right
+                    move_right()
+                else:
+                    move_left()
+                
+                # Allow the robot to turn for a short duration
+                time.sleep(0.5)
+            else:  # If no obstacle, move forward
+                move_forward()
             
-            # Move backward for a short duration
-            move_backward()
-            time.sleep(1)
-            
-            # Randomly choose left or right to turn
-            if distance_m < 5:  # If the obstacle is very close, turn right
-                move_right()
-            else:
-                move_left()
- # Allow the robot to turn for a short duration
-            time.sleep(0.5)
-        else:  # If no obstacle, move forward
-            move_forward()
-        
-        # Delay before the next reading
-        time.sleep(0.1)
-    
-    except KeyboardInterrupt:
-        # Stop the motors and exit the loop if a keyboard interrupt is detected
-        stop_motors()
-        break
-    except Exception as e:
-        # Print any exceptions for debugging
-        print("Error:", e)
+        except Exception as e:
+            # Handle any errors related to the sensor
+            print("Error reading ultrasonic sensor:", e)
+
+    # Delay before the next frame loop
+    time.sleep(0.1)
+
+
