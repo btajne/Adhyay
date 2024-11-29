@@ -1,67 +1,140 @@
-import board, busio, displayio, time
+import board
+import busio
+import displayio
+import time
 import adafruit_displayio_ssd1306
 import adafruit_imageload
+import adafruit_hcsr04
+import digitalio
 
-# Function for Monochrome displays to invert the background color
-# def invert_colors():
-#     temp = icon_pal[0]
-#     icon_pal[0] = icon_pal[1]
-#     icon_pal[1] = temp
-
+# Release any previous displays
 displayio.release_displays()
 
-# I2C pin mapping - SDA->GP0 & SCL->GP1
+# I2C pin mapping - SDA->GP26 & SCL->GP27
 sda, scl = board.GP26, board.GP27
 i2c = busio.I2C(scl, sda)
 
 # Initialize I2C display with device address 0x3C
-# Display Width x Height for sh1106 = 128x64 Pixels
+# Display Width x Height for SSD1306 = 128x64 Pixels
 display_bus = displayio.I2CDisplay(i2c, device_address=0x3c)
 display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=128, height=64)
 
-while True :
-    for n in range(1):
-        # Converted bitmap file - SPRITE Sheet image
-        IMAGE_FILE = "icon_19_frames.bmp"
-        SPRITE_SIZE = (128, 64)
-        FRAMES = 19
+# Converted bitmap file - SPRITE Sheet image
+IMAGE_FILE = "icon_28_frames.bmp"
+SPRITE_SIZE = (128, 64)
 
-        group = displayio.Group()
+# Load the spritesheet
+icon_bit, icon_pal = adafruit_imageload.load(
+    IMAGE_FILE, bitmap=displayio.Bitmap, palette=displayio.Palette
+)
 
-        # load the spritesheet
-        icon_bit, icon_pal = adafruit_imageload.load(IMAGE_FILE,
-                                                         bitmap=displayio.Bitmap,
-                                                         palette=displayio.Palette)
-#         invert_colors()
+# Dynamically calculate the number of frames
+actual_frames = icon_bit.width // SPRITE_SIZE[0]
 
-        # Cordinates x=32, y=0 To keep icon animation at the center of Display
-        icon_grid = displayio.TileGrid(icon_bit, pixel_shader=icon_pal,
-                                         width=1, height=1,
-                                         tile_height=SPRITE_SIZE[1], tile_width=SPRITE_SIZE[0],
-                                         default_tile=0,
-                                         x=0, y=0)
+# Coordinates x=0, y=0 to position the animation on the display
+icon_grid = displayio.TileGrid(
+    icon_bit,
+    pixel_shader=icon_pal,
+    width=1,
+    height=1,
+    tile_height=SPRITE_SIZE[1],
+    tile_width=SPRITE_SIZE[0],
+    default_tile=0,
+    x=0,
+    y=0,
+)
 
-        # Append the icon grid to Display(Image) group
-        group.append(icon_grid)
+# Append the icon grid to a display group
+group = displayio.Group()
+group.append(icon_grid)
 
+# Set the display root group
+display.root_group = group
 
-        # Display SPRITE Sheet image
-        display.show(group)
+# Motor and sensor pin configuration
+TRIGGER_PIN_M = board.GP9
+ECHO_PIN_M = board.GP8
 
-        # Timer Variables
-        timer = 0
-        pointer = 1
-        loop = 1
+MOTOR1_PIN1 = board.GP11
+MOTOR1_PIN2 = board.GP10
+MOTOR2_PIN1 = board.GP14
+MOTOR2_PIN2 = board.GP15
 
-        # Following loop make sure that (SPRITE Sheet Images) Displayed
-        # in continous sequence so that it will create Animation Effect
+# Initialize ultrasonic sensor
+sonar_m = adafruit_hcsr04.HCSR04(trigger_pin=TRIGGER_PIN_M, echo_pin=ECHO_PIN_M)
 
-        while loop:
-          if (timer + 0.1) < time.monotonic():
-            icon_grid[0] = pointer
-            pointer += 1
-            timer = time.monotonic()
-            if pointer > FRAMES-1:
-                pointer = 0
-                loop = 0
-        time.sleep(0.5)
+# Initialize motor control pins
+motor1_pin1 = digitalio.DigitalInOut(MOTOR1_PIN1)
+motor1_pin2 = digitalio.DigitalInOut(MOTOR1_PIN2)
+motor2_pin1 = digitalio.DigitalInOut(MOTOR2_PIN1)
+motor2_pin2 = digitalio.DigitalInOut(MOTOR2_PIN2)
+
+motor1_pin1.direction = digitalio.Direction.OUTPUT
+motor1_pin2.direction = digitalio.Direction.OUTPUT
+motor2_pin1.direction = digitalio.Direction.OUTPUT
+motor2_pin2.direction = digitalio.Direction.OUTPUT
+
+# Function to get distance from middle ultrasonic sensor
+def get_dis_mid():
+    try:
+        return sonar_m.distance
+    except RuntimeError:
+        return None  # Return None if the sensor fails to read
+
+# Motor control functions
+def move_forward():
+    motor1_pin1.value = True
+    motor1_pin2.value = False
+    motor2_pin1.value = True
+    motor2_pin2.value = False
+
+def move_backward():
+    motor1_pin1.value = False
+    motor1_pin2.value = True
+    motor2_pin1.value = False
+    motor2_pin2.value = True
+
+def move_left():
+    motor1_pin1.value = False
+    motor1_pin2.value = True
+    motor2_pin1.value = True
+    motor2_pin2.value = False
+
+def move_right():
+    motor1_pin1.value = True
+    motor1_pin2.value = False
+    motor2_pin1.value = False
+    motor2_pin2.value = True
+
+def stop_motors():
+    motor1_pin1.value = False
+    motor1_pin2.value = False
+    motor2_pin1.value = False
+    motor2_pin2.value = False
+
+# Main animation and motor control loop
+while True:
+    # Animation loop for the display
+    for pointer in range(actual_frames):
+        icon_grid[0] = pointer
+        time.sleep(0.05)  # Animation speed
+
+        # Obstacle detection and avoidance
+        distance_m = get_dis_mid()
+        if distance_m is not None:
+            print(f"Distance: {distance_m} cm")
+            if distance_m < 10:  # Obstacle detected
+                print("Obstacle detected! Taking action.")
+                move_backward()
+                time.sleep(0.5)
+                move_right() if distance_m < 5 else move_left()
+                time.sleep(0.5)
+            else:
+                move_forward()
+        else:
+            print("Sensor error or no reading.")
+            stop_motors()
+
+    # Delay before restarting the frame loop
+    time.sleep(0.1)
+
