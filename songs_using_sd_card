@@ -1,0 +1,38 @@
+import board
+import time
+import busio
+import sdcardio
+import storage
+import microcontroller
+import time, board, digitalio
+from audiomp3 import MP3Decoder
+from audiopwmio import PWMAudioOut as AudioOut
+
+MOSI = board.GP19
+MISO = board.GP16
+clk = board.GP18
+cs = board.GP17
+
+spi = busio.SPI(clk, MOSI=MOSI, MISO=MISO)
+sd = sdcardio.SDCard(spi, cs)
+
+vfs = storage.VfsFat(sd)
+storage.mount(vfs, '/sd')
+
+audio = AudioOut(board.GP28)
+path = "sd/"
+
+
+def play_mp3(filename):
+    decoder.file = open(filename, "rb")
+    audio.play(decoder)
+    while audio.playing:
+        pass
+
+
+with open("/sd/Khalasi.mp3", "rb") as file:
+    filename = "/sd/Khalasi.mp3"
+    mp3_file = open(filename, "rb")
+    decoder = MP3Decoder(mp3_file)
+    play_mp3("/sd/Khalasi.mp3")
+
