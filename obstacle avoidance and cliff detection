@@ -1,0 +1,143 @@
+import time
+import board
+import digitalio
+import adafruit_hcsr04
+
+# Pin Configuration
+TRIGGER_PIN_M = board.GP9
+ECHO_PIN_M = board.GP8
+
+MOTOR1_PIN1 = board.GP11
+MOTOR1_PIN2 = board.GP10
+MOTOR2_PIN1 = board.GP14
+MOTOR2_PIN2 = board.GP15
+# Initialize IR sensors
+# Manually initialize IR sensors
+ir_sensor1 = digitalio.DigitalInOut(board.GP0)
+ir_sensor1.direction = digitalio.Direction.INPUT
+
+ir_sensor2 = digitalio.DigitalInOut(board.GP17)
+ir_sensor2.direction = digitalio.Direction.INPUT
+
+ir_sensor3 = digitalio.DigitalInOut(board.GP18)
+ir_sensor3.direction = digitalio.Direction.INPUT
+
+ir_sensor4 = digitalio.DigitalInOut(board.GP19)
+ir_sensor4.direction = digitalio.Direction.INPUT
+
+ir_sensor5 = digitalio.DigitalInOut(board.GP20)
+ir_sensor5.direction = digitalio.Direction.INPUT
+
+# Combine into a list for further processing if needed
+ir_sensors = [ir_sensor1, ir_sensor2, ir_sensor3, ir_sensor4, ir_sensor5]
+
+
+# Initialize ultrasonic sensor
+try:
+    sonar_m = adafruit_hcsr04.HCSR04(trigger_pin=TRIGGER_PIN_M, echo_pin=ECHO_PIN_M)
+except Exception as e:
+    print("Error initializing ultrasonic sensor:", e)
+    sonar_m = None
+
+# Initialize motors
+motor1_pin1 = digitalio.DigitalInOut(MOTOR1_PIN1)
+motor1_pin2 = digitalio.DigitalInOut(MOTOR1_PIN2)
+motor2_pin1 = digitalio.DigitalInOut(MOTOR2_PIN1)
+motor2_pin2 = digitalio.DigitalInOut(MOTOR2_PIN2)
+
+for motor in [motor1_pin1, motor1_pin2, motor2_pin1, motor2_pin2]:
+    motor.direction = digitalio.Direction.OUTPUT
+
+# Motor control functions
+def stop_motors():
+    motor1_pin1.value = motor1_pin2.value = motor2_pin1.value = motor2_pin2.value = False
+
+def move_forward():
+    motor1_pin1.value = motor2_pin1.value = True
+    motor1_pin2.value = motor2_pin2.value = False
+
+def move_backward():
+    motor1_pin2.value = motor2_pin2.value = True
+    motor1_pin1.value = motor2_pin1.value = False
+
+def turn_left():
+    motor1_pin2.value = motor2_pin1.value = True
+    motor1_pin1.value = motor2_pin2.value = False
+
+def turn_right():
+    motor1_pin1.value = motor2_pin2.value = True
+    motor1_pin2.value = motor2_pin1.value = False
+
+# Sensor reading functions
+def get_distance():
+    try:
+        return sonar_m.distance if sonar_m else None
+    except RuntimeError:
+        return None
+
+def detect_cliff():
+    return [not sensor.value for sensor in ir_sensors]
+
+# Main loop
+def main():
+    try:
+        while True:
+            # Read sensors
+            distance = get_distance()
+            cliff_states = detect_cliff()
+            print(f"Distance: {distance} cm, Cliff States: {cliff_states}")
+
+            # Cliff detection
+            if any(cliff_states):
+                print("Cliff detected!")
+                stop_motors()
+                move_backward()
+                time.sleep(0.5)
+
+                if cliff_states[0] or cliff_states[1]:  # Left cliff
+                    print("Avoiding left cliff")
+                    turn_right()
+                elif cliff_states[3] or cliff_states[4]:  # Right cliff
+                    print("Avoiding right cliff")
+                    turn_left()
+
+                time.sleep(0.5)
+                stop_motors()
+
+            # Obstacle detection
+            elif distance is not None and distance < 10:
+                print("Obstacle detected!")
+                stop_motors()
+                move_backward()
+                time.sleep(0.5)
+
+                if distance < 5:
+                    print("Obstacle very close, turning right")
+                    turn_right()
+                else:
+                    print("Obstacle detected, turning left")
+                    turn_left()
+
+                time.sleep(0.5)
+                stop_motors()
+
+            # Normal behavior
+            else:
+                print("Path clear, moving forward")
+                move_forward()
+
+            # Stabilize loop
+            time.sleep(0.1)
+
+    except KeyboardInterrupt:
+        print("Program interrupted, stopping robot.")
+        stop_motors()
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        stop_motors()
+
+# Run the program
+if __name__ == "__main__":
+    main()
+
