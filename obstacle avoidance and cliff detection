@@ -12,20 +12,20 @@ MOTOR1_PIN2 = board.GP10
 MOTOR2_PIN1 = board.GP14
 MOTOR2_PIN2 = board.GP15
 # Initialize IR sensors
-# Manually initialize IR sensors
-ir_sensor1 = digitalio.DigitalInOut(board.GP0)
+# Manually initiobstacle avoidance alize IR sensors
+ir_sensor1 = digitalio.DigitalInOut(board.GP2)
 ir_sensor1.direction = digitalio.Direction.INPUT
 
-ir_sensor2 = digitalio.DigitalInOut(board.GP17)
+ir_sensor2 = digitalio.DigitalInOut(board.GP3)
 ir_sensor2.direction = digitalio.Direction.INPUT
 
-ir_sensor3 = digitalio.DigitalInOut(board.GP18)
+ir_sensor3 = digitalio.DigitalInOut(board.GP4)
 ir_sensor3.direction = digitalio.Direction.INPUT
 
-ir_sensor4 = digitalio.DigitalInOut(board.GP19)
+ir_sensor4 = digitalio.DigitalInOut(board.GP5)
 ir_sensor4.direction = digitalio.Direction.INPUT
 
-ir_sensor5 = digitalio.DigitalInOut(board.GP20)
+ir_sensor5 = digitalio.DigitalInOut(board.GP6)
 ir_sensor5.direction = digitalio.Direction.INPUT
 
 # Combine into a list for further processing if needed
@@ -140,4 +140,3 @@ def main():
 # Run the program
 if __name__ == "__main__":
     main()
-
