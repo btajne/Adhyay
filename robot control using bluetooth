@@ -1,0 +1,70 @@
+from machine import Pin, PWM, UART
+import time
+
+# Initialize UART for Bluetooth module (HC-05/HC-06)
+uart0 = UART(0, baudrate=9600, tx=Pin(12), rx=Pin(13))
+
+# Motor control pins (for H-Bridge like L298N or L293D)
+motor1_pin1 = Pin(10, Pin.OUT)
+motor1_pin2 = Pin(11, Pin.OUT)
+motor2_pin1 = Pin(14, Pin.OUT)
+motor2_pin2 = Pin(15, Pin.OUT)
+
+# Motor movement functions
+def move_forward():
+    motor1_pin1.value(1)
+    motor1_pin2.value(0)
+    motor2_pin1.value(1)
+    motor2_pin2.value(0)
+
+def move_backward():
+    motor1_pin1.value(0)
+    motor1_pin2.value(1)
+    motor2_pin1.value(0)
+    motor2_pin2.value(1)
+
+def move_right():
+    motor1_pin1.value(0)
+    motor1_pin2.value(1)
+    motor2_pin1.value(1)
+    motor2_pin2.value(0)
+
+def move_left():
+    motor1_pin1.value(1)
+    motor1_pin2.value(0)
+    motor2_pin1.value(0)
+    motor2_pin2.value(1)
+
+def stop_motors():
+    motor1_pin1.value(0)
+    motor1_pin2.value(0)
+    motor2_pin1.value(0)
+    motor2_pin2.value(0)
+
+# Function to control motors based on command
+def motor_control(command):
+    if command == "F":
+        move_forward()
+    elif command == "B":
+        move_backward()
+    elif command == "L":
+        move_left()
+    elif command == "R":
+        move_right()
+    elif command == "S":
+        stop_motors()
+    else:
+        uart0.write("Invalid Command\r\n")
+
+# Send a welcome message
+uart0.write("Hello, Bluetooth Motor Control Ready!\r\n")
+
+while True:
+    if uart0.any():
+        data = uart0.readline()  # Read incoming data
+        if data:
+            data = data.decode('utf-8').strip()
+            print(f"Received: {data}")
+            uart0.write(f"Echo: {data}\r\n")  # Echo back received message
+            motor_control(data)  # Control motors based on received command
+    time.sleep(0.1)
